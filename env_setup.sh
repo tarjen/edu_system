@@ -1,2 +1,5 @@
-export FLASK_APP=online_judge.py
-export FLASK_DEBUG=1
+python -m venv virtual_env
+
+source virtual_env/bin/activate  #(run env)
+
+pip install -r requirements.txt
