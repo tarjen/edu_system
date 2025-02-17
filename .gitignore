@@ -1,2 +1,6 @@
 /virtual_env/*
 .env
+*.pyc
+*~
+__pycache__
+.DS_Store
