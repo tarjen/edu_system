@@ -1,7 +1,3 @@
-# edu_system
-gruaduation project
-
-
-
-## tarjen
-OJ(judger,judge_host,problem_setter,problem_selector)
+# environment
+1. source ./env/bin/activate
+2.
