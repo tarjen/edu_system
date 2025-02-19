@@ -63,6 +63,9 @@ class Problem(db.Model):
     def set_is_public(self, public):
         self.is_public = public
         self.save()
+    def get_tags_string(self):
+        tags_list = [tag.name for tag in self.tags]
+        return ', '.join(tags_list) if tags_list else ""
 
 
 class ProblemTag(db.Model):
