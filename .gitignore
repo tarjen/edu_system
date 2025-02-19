@@ -1,6 +1,7 @@
 /virtual_env/*
 .env
 *.pyc
+data.db
 *~
 __pycache__
 .DS_Store
