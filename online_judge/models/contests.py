@@ -73,6 +73,10 @@ class ContestUser(db.Model):
         db.session.add(self)
         db.session.commit()
 
+    def delete(self):
+        db.session.delete(self)
+        db.session.commit()
+
 
 class Contest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -100,6 +104,19 @@ class Contest(db.Model):
             if contestuser is None:
                 ContestUser(contest_id=self.id,user_id=user_id).save()
 
+    def delete_users(self,user_ids):
+        """
+        delete Paticipants(Users) by a user_id list
+        if the user is in the contest,then pass it
+        Args:
+            user_ids (integer list): 
+        Returns:
+            None
+        """
+        for user_id in user_ids:
+            contestuser = ContestUser.query.filter_by(contest_id=self.id,user_id=user_id).first()
+            if contestuser is not None:
+                contestuser.delete()
     
     def add_problem(self, problem_id):
         """
@@ -113,6 +130,9 @@ class Contest(db.Model):
         contest_problems_int = self.get_problems()
         if problem_id in contest_problems_int:
             return
+        problem = Problem.query.filter_by(id=problem_id).first()
+        problem.used_time += 1
+        problem.save()
         if self.problem_ids:
             self.problem_ids += f",{problem_id}"
         else:
@@ -125,12 +145,16 @@ class Contest(db.Model):
         Returns:
             None
         """
+        # clear pre problems
+        now_problems = self.get_problems()
+        for problem_id in now_problems:
+            problem = Problem.query.filter_by(id=problem_id).first()
+            problem.used_time -= 1
+            problem.save()
         self.problem_ids=""
+
         for problem_id in problem_ids:
-            if self.problem_ids:
-                self.problem_ids += f",{problem_id}"
-            else:
-                self.problem_ids = f"{problem_id}"
+            self.add_problem(problem_id)
     def get_problems(self):
         """
         Return problems in contest
@@ -198,12 +222,16 @@ class Contest(db.Model):
         db.session.add(self)
         db.session.commit()
 
-    def is_allowed_edit(self, user=None):
+    def is_allowed_edit(self, user):
         if user and user.priviledge >= 2:
             return True
         if user and user.id == self.holder.id:
             return True
         return False
+    
+    def is_allowed_view(self, user):
+        contestuser=ContestUser.query.filter_by(contest_id=self.id,user_id=user.id).first
+        return self.is_allowed_edit or contestuser is not None
 
     def is_running(self, now=None):
         if not now:

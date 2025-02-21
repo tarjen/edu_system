@@ -22,6 +22,7 @@ class Problem(db.Model):
     accept_num = db.Column(db.Integer)
     submit_num = db.Column(db.Integer)
     is_public = db.Column(db.Boolean)
+    used_times = db.Column(db.Integer)
 
     def __init__(self, title, user_id,user_name,
                  time_limit=1000, memory_limit=256
@@ -36,6 +37,7 @@ class Problem(db.Model):
         self.accept_num = 0
         self.submit_num = 0
         self.is_public = False
+        self.used_time = 0
 
     def __repr__(self):
         return "<Problem %r>" % self.title
