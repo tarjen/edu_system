@@ -20,9 +20,7 @@ class Submission(db.Model):
     time_used = db.Column(db.Integer)
     memory_used = db.Column(db.Integer)
 
-    def __init__(self, code, language, user_id, problem_id, contest_id=0, submit_time=None):
-        if not submit_time:
-            submit_time = int(time.time())
+    def __init__(self, code, language, user_id, problem_id, contest_id, submit_time):
         self.code = code
         self.language = language
         self.user_id = user_id

@@ -9,7 +9,7 @@ from online_judge.models.problems import Problem
 def get_problem_data(problem_id):
     #TODO JWT_CHECK and check if the user allowed to use the problem
 
-    problem = Problem.query.filter_by(problem_id=problem_id).first()
+    problem = Problem.query.filter_by(id=problem_id).first()
     if problem is None:
         return jsonify({"error": "Problem not found"}), 404    
     else:
@@ -31,7 +31,7 @@ def get_problem_data(problem_id):
 def update_problem_data(problem_id):
     # TODO: JWT_CHECK and check if the user is allowed to edit the problem
 
-    problem = Problem.query.filter_by(problem_id=problem_id).first()
+    problem = Problem.query.filter_by(id=problem_id).first()
     if problem is None:
         return jsonify({"error": "Problem not found"}), 404
 

@@ -14,7 +14,7 @@ def submit():
       # TODO JWT_TOKEN CHECK
     data = request.get_json()
 
-    # 从请求体中提取所需的数据
+    # 从请求体中提取所需的数据  
     user_id = data.get('user_id')
     problem_id = data.get('problem_id')
     contest_id = data.get('contest_id')
@@ -30,7 +30,7 @@ def submit():
         contestuser = ContestUser.query.filter_by(contest_id=contest_id,problem_id=problem_id).first()
         if contestuser is None:
             return jsonify({"error": "the contest is not available for the user"})    
-        if problem_id not in Contest.query.filter_by(contest_id=contest_id).first().get_problems()
+        if problem_id not in Contest.query.filter_by(id=contest_id).first().get_problems():
             return jsonify({"error": "the contest don't have this problem"})    
     submission = Submission(code=code,user_id=user_id,problem_id=problem_id,
                             submit_time=time.time())

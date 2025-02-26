@@ -1,3 +1,4 @@
+from flask import jsonify
 from online_judge import db
 from online_judge.models.problems import Problem
 from sqlalchemy import DateTime
@@ -6,6 +7,11 @@ import time
 import json
 
 PENALTY_PER_ATTEMPT = 20
+
+contest_problem = db.Table('contest_problem',
+    db.Column('contest_id', db.Integer, db.ForeignKey('contest.id'), primary_key=True),
+    db.Column('problem_id', db.Integer, db.ForeignKey('problem.id'), primary_key=True),
+)
 
 class ContestUser(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -84,67 +90,45 @@ class Contest(db.Model):
     start_time = db.Column(DateTime)
     end_time = db.Column(DateTime)
 
-    holder_id = db.Column(db.Integer, index=True)
+    holder_id = db.Column(db.Integer)
     holder_name = db.Column(db.String(80))
 
     information = db.Column(db.Text)
-    problem_ids = db.Column(db.Text) # save use text represent problems id,split by ","
+    problems = db.relationship('Problem', 
+                            secondary=contest_problem,
+                            backref=db.backref('contests', lazy='dynamic'),
+                            lazy='dynamic')  # 新增多对多关系
+
+    def __init__(self, title, start_time, end_time, holder_id, holder_name):
+        self.title = title
+        self.start_time = start_time
+        self.end_time = end_time
+        self.holder_id = holder_id
+        self.holder_name = holder_name
+
 
     def add_users(self,user_ids):
-        """
-        add Paticipants(Users) by a user_id list
-        if the user is in the contest,then pass it
-        Args:
-            user_ids (integer list): 
-        Returns:
-            None
-        """
         for user_id in user_ids:
             contestuser = ContestUser.query.filter_by(contest_id=self.id,user_id=user_id).first()
             if contestuser is None:
                 ContestUser(contest_id=self.id,user_id=user_id).save()
 
     def delete_users(self,user_ids):
-        """
-        delete Paticipants(Users) by a user_id list
-        if the user is in the contest,then pass it
-        Args:
-            user_ids (integer list): 
-        Returns:
-            None
-        """
         for user_id in user_ids:
             contestuser = ContestUser.query.filter_by(contest_id=self.id,user_id=user_id).first()
             if contestuser is not None:
                 contestuser.delete()
     
     def add_problem(self, problem_id):
-        """
-        add problems by a problem_id 
-        if the problem is in the contest,then pass it
-        Args:
-            problem_id (int): 
-        Returns:
-            None
-        """
-        contest_problems_int = self.get_problems()
-        if problem_id in contest_problems_int:
-            return
-        problem = Problem.query.filter_by(id=problem_id).first()
-        problem.used_time += 1
-        problem.save()
-        if self.problem_ids:
-            self.problem_ids += f",{problem_id}"
-        else:
-            self.problem_ids = f"{problem_id}"
+        problem = Problem.query.get(problem_id)
+        if not problem:
+            raise ValueError("Problem not found")
+        
+        if not self.problems.filter(contest_problem.c.problem_id == problem_id).first():
+            self.problems.append(problem)
+            problem.used_time += 1  
+            problem.save()
     def update_problem(self, problem_ids):
-        """
-        update problems by a problem_id list 
-        Args:
-            problem_ids (integer list): 
-        Returns:
-            None
-        """
         # clear pre problems
         now_problems = self.get_problems()
         for problem_id in now_problems:
@@ -156,38 +140,18 @@ class Contest(db.Model):
         for problem_id in problem_ids:
             self.add_problem(problem_id)
     def get_problems(self):
-        """
-        Return problems in contest
-
-        Args:
-            None
-        Returns:
-            problem_ids (integer list): 
-        """
-        contest_problems = self.problem_ids.split(",")
-        contest_problems_int = [int(id) for id in contest_problems]
-        return contest_problems_int
+        return [p.id for p in self.problems.all()]  # 通过关系直接获取
     def get_ranklist(self):
-        """
-        ranklist format(dict):
-            userid,score,penalty,score_details
-        score_details format(dict):
-            problem_id,solve_time,attempt
-        Args:
-            None
-        Returns:
-            ranklist (integer list): 
-        """
         sorted_users = []
         contest_users = ContestUser.query.filter_by(contest_id=self.id)
+        problem_ids = self.get_problems()
         # 计算每个用户的分数和惩罚，并存储在一个临时列表中
         for user in contest_users:
-            score, penalty = user.calculate_score(self.problem_ids)
+            score, penalty = user.calculate_score(problem_ids)
             sorted_users.append({
                 "user_id": user.user_id,
                 "score": score,
                 "penalty": penalty,
-                "score_details": user.get_score_details(self.problem_ids)
             })
         
         # 按照规则排序用户列表
@@ -202,18 +166,7 @@ class Contest(db.Model):
                 "penalty": user_data["penalty"],
                 "score_details": user_data["score_details"]
             })
-        
-        # 将结果写入JSON文件
-        with open('sorted_contest_users.json', 'w') as file:
-            json.dump(result, file, indent=4)
-        
         return result
-    def __init__(self, title, start_time, end_time, holder):
-        self.title = title
-        self.start_time = start_time
-        self.end_time = end_time
-        self.holder = holder
-
 
     def __repr__(self):
         return "<Contest %r>" % self.title
@@ -223,7 +176,7 @@ class Contest(db.Model):
         db.session.commit()
 
     def is_allowed_edit(self, user):
-        if user and user.priviledge >= 2:
+        if user and user.power >= 2:
             return True
         if user and user.id == self.holder.id:
             return True
