@@ -37,7 +37,7 @@ class Problem(db.Model):
         self.accept_num = 0
         self.submit_num = 0
         self.is_public = is_public
-        self.used_time = 0
+        self.used_times = 0
 
     def __repr__(self):
         return "<Problem %r>" % self.title

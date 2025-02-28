@@ -25,6 +25,7 @@ class Submission(db.Model):
         self.language = language
         self.user_id = user_id
         self.problem_id = problem_id
+        self.contest_id = contest_id
         self.submit_time = submit_time
 
         self.status = "Pending"
@@ -39,7 +40,7 @@ class Submission(db.Model):
         db.session.commit()
 
     def update_result_from_pending(self, status, time_used, memory_used):
-        if status != "Pending":
+        if self.status != "Pending":
             raise ValueError(f"the submission has been updated,error id={self.id}")
         self.status = status
         self.time_used = time_used
@@ -54,6 +55,8 @@ class Submission(db.Model):
 
         #update contests info
 
+        if self.contest_id is None:
+            return
         contest_end_time = Contest.query.filter_by(id=self.contest_id).first().end_time
         if self.problem_id != None and self.submit_time <= contest_end_time:
             contestuser = ContestUser.query.filter_by(contest_id=self.contest_id,user_id=self.user_id).first()

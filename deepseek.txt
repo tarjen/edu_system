@@ -1,0 +1,28 @@
+接下来我将给出一个函数,你需要补全里面的注释
+以下是你需要补充的点
+1.需要查看jwttoken是否被使用,同时思考哪些用户拥有访问权限
+2.补全输入输出类型,并且说出所有里面的信息
+@app.route('/api/contest/update_contest_info/<int:contest_id>', methods=['POST'])
+@jwt_required()
+def update_contest_info(contest_id):
+    """
+    (要求jwt_token)    
+    根据POST请求中的json文件获得比赛的信息修改(标题, 补充信息)
+
+    Args:
+    Returns:
+    """
+    user = User(get_jwt())
+    contest = Contest.query.filter_by(id=contest_id).first()    
+    if contest is None:
+        return jsonify({"error": "contest not found"}), 404    
+    if not contest.is_allowed_edit(user):
+        return jsonify({"error": f"user_id = {user.id} can't update contest(id = {contest_id})"}) 
+
+    data = request.get_json()
+    if 'title' in data:
+        contest.title = data['title']
+    if 'information' in data:
+        contest.information = data['information']
+    contest.save()
+    return jsonify({"OK": "update success"})

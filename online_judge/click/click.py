@@ -4,7 +4,7 @@ from online_judge.models import Contest, Problem, Submission
 from datetime import datetime
 import time
 
-@app.cli.command()  # 注册为命令，可以传入 name 参数来自定义命令
+@app.cli.command()  # 注册为命令,可以传入 name 参数来自定义命令
 def testdb():
     db.drop_all()
     db.create_all()

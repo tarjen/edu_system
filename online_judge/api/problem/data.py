@@ -3,10 +3,12 @@ import os,zipfile
 from flask import send_file
 
 from flask import Flask,jsonify,request
-from online_judge import app
+from online_judge import app,jwt_required
 from online_judge.models.problems import Problem
 @app.route('/api/problem/data/get/<int:problem_id>', methods=['GET'])
+@jwt_required()
 def get_problem_data(problem_id):
+    
     #TODO JWT_CHECK and check if the user allowed to use the problem
 
     problem = Problem.query.filter_by(id=problem_id).first()

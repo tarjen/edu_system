@@ -10,17 +10,17 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////' + os.path.join(os.path.dirname(app.root_path), os.getenv('DATABASE_FILE', 'data.db'))
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
 
 app.config["JWT_SECRET_KEY"] = '123456'
 app.config['JWT_ALGORITHM'] = 'HS256'
 app.config["JWT_DECODE_AUDIENCE"] = None  # 禁用aud验证
 
-# app.config["JWT_TOKEN_LOCATION"] = ["headers"]  # 必须声明从headers获取
-# app.config["JWT_HEADER_NAME"] = "token"         # 请求头字段名称
-# app.config["JWT_HEADER_TYPE"] = ""              # 禁用类型前缀（如Bearer）
-# app.config['JWT_VERIFY_CLAIMS'] = ['signature', 'exp']  # 明确验证声明
-# app.config['PROPAGATE_EXCEPTIONS'] = True  # 暴露详细错误信息（仅限开发环境）
+app.config["JWT_TOKEN_LOCATION"] = ["headers"]  # 必须声明从headers获取
+app.config["JWT_HEADER_NAME"] = "token"         # 请求头字段名称
+app.config["JWT_HEADER_TYPE"] = ""              # 禁用类型前缀(如Bearer)
+
+db = SQLAlchemy(app)
+
 jwt = JWTManager(app)
 
 from .api import *
