@@ -6,7 +6,6 @@ class CustomHeaderJWTTest(unittest.TestCase):
     def setUp(self):
         app.config['TESTING'] = True
 
-
         self.client = app.test_client()
         self.valid_token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIxIiwic3ViIjoiMTEiLCJwb3dlciI6MiwiZXhwIjoxNzcyMTE5MDgwLCJ1c2VybmFtZSI6IkFETUlOIn0.ZtVxfa_kyEnVcEb_XarhQS_CeRZhx8CkOL1GFD98-yQ"
     

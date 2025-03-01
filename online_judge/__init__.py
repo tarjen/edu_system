@@ -36,3 +36,4 @@ def protected():
         "power": claims.get("power")
     }), 200
 
+

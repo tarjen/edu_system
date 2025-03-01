@@ -119,7 +119,7 @@ class ContestAPITestCase(unittest.TestCase):
             ),
             Submission(
                 code="Code c++ 2",
-                language="c++",
+                language="cpp",
                 user_id=2,
                 problem_id=2,
                 contest_id=1,

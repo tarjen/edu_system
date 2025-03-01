@@ -216,7 +216,7 @@ def get_contest_user_submission(contest_id):
             - submission_id (int): 提交唯一标识符
             - problem_id (int): 题目唯一标识符
             - submit_time (str): 提交时间(Wed, 26 Feb 2025 08:00:00 GMT)
-            - language (str): 编程语言(如"Python"/"C++")
+            - language (str): 编程语言(如"python"/"cpp")
             - status (str): 判题状态(枚举值:"Accepted", "WrongAnswer"等)
             - time_used (int): 耗时(毫秒)
             - memory_used (int): 内存使用(MB)

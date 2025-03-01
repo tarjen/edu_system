@@ -73,6 +73,7 @@ class ContestUser(db.Model):
             score_details[pid]["attempts"] += 1
 
         self.score_details = json.dumps(score_details)
+        self.save()
 
     def get_score_details(self):
         return json.loads(self.score_details)
