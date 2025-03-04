@@ -17,7 +17,7 @@ class Submission(db.Model):
 
     status = db.Column(Enum("Pending","Accepted","WrongAnswer","TimeLimitExceeded","IdlenessLimitExceeded",
         "RuntimeError","SystemError","CompileError", name="status_type"))
-    time_used = db.Column(db.Integer)
+    time_used = db.Column(db.Float)
     memory_used = db.Column(db.Integer)
     compile_error_info = db.Column(db.Text)
 

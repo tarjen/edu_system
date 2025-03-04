@@ -9,10 +9,9 @@ import json
 @app.route('/api/contest/filter', methods=['POST'])
 def filter_contests():
     """
-    根据POST请求中的JSON参数过滤比赛
+    根据POST请求中的JSON参数过滤比赛(通过JSON Body传递参数)
     
     Args:
-        (通过JSON Body传递参数)
         title (str, 可选): 比赛标题模糊搜索关键词,支持部分匹配
         holder_name (str, 可选): 主办方名称精确匹配(区分大小写)
     
@@ -160,7 +159,7 @@ def get_contest_all_submission(contest_id):
             - submission_id (int): 提交唯一标识符
             - problem_id (int): 题目唯一标识符
             - submit_time (str): 提交时间(Wed, 26 Feb 2025 08:00:00 GMT)
-            - language (str): 编程语言(如"Python"/"C++")
+            - language (str): 编程语言(如"python"/"cpp")
             - status (str): 判题状态(枚举值:"Accepted", "WrongAnswer"等)
             - time_used (int): 耗时(毫秒)
             - memory_used (int): 内存使用(MB)
@@ -169,7 +168,7 @@ def get_contest_all_submission(contest_id):
                 "submission_id": 1,
                 "problem_id": 1,
                 "submit_time": "Wed, 26 Feb 2025 08:00:00 GMT",
-                "language": "Python",
+                "language": "python",
                 "status": "Accepted",
                 "time_used": 500,
                 "memory_used": 128

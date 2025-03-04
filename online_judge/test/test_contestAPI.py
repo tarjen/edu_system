@@ -111,14 +111,14 @@ class ContestAPITestCase(unittest.TestCase):
         submissions = [
             Submission(
                 code="print('Hello')",
-                language="Python",
+                language="python",
                 user_id=2,
                 problem_id=1,
                 contest_id=1,
                 submit_time=datetime(2025, 1, 1, 10, 0, 0),  # 在比赛时间内
             ),
             Submission(
-                code="Code c++ 2",
+                code="Code cpp 2",
                 language="cpp",
                 user_id=2,
                 problem_id=2,
@@ -207,7 +207,7 @@ class ContestAPITestCase(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(len(resp.json), 2)
 
-        sub = Submission(user_id=2, contest_id=1, problem_id=1,code="code",language="c++",submit_time=datetime(2025, 1, 1, 9, 0, 0))
+        sub = Submission(user_id=2, contest_id=1, problem_id=1,code="code",language="cpp",submit_time=datetime(2025, 1, 1, 9, 0, 0))
         sub.save()
         
         resp = self.client.get('/api/contest/get_contest_user_submission/1',

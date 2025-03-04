@@ -29,11 +29,11 @@ def testdb():
 
     # 生成 Submission 实例
     submissions = [
-        Submission(code='Submitted code for Problem 1', language='Python', user_id=1, problem_id=1, contest_id=0, submit_time=datetime.now()),
-        Submission(code='Submitted code for Problem 2', language='C++', user_id=2, problem_id=2, contest_id=0, submit_time=datetime.now()),
-        Submission(code='Submitted code for Problem 3', language='Rust', user_id=3, problem_id=3, contest_id=0, submit_time=datetime.now()),
-        Submission(code='Submitted code for Problem 4', language='Python', user_id=4, problem_id=4, contest_id=0, submit_time=datetime.now()),
-        Submission(code='Submitted code for Problem 5', language='C++', user_id=5, problem_id=5, contest_id=0, submit_time=datetime.now())
+        Submission(code='Submitted code for Problem 1', language='python', user_id=1, problem_id=1, contest_id=0, submit_time=datetime.now()),
+        Submission(code='Submitted code for Problem 2', language='cpp', user_id=2, problem_id=2, contest_id=0, submit_time=datetime.now()),
+        Submission(code='Submitted code for Problem 3', language='rust', user_id=3, problem_id=3, contest_id=0, submit_time=datetime.now()),
+        Submission(code='Submitted code for Problem 4', language='python', user_id=4, problem_id=4, contest_id=0, submit_time=datetime.now()),
+        Submission(code='Submitted code for Problem 5', language='cpp', user_id=5, problem_id=5, contest_id=0, submit_time=datetime.now())
     ]
 
     # 将实例添加到数据库会话中

@@ -4,6 +4,7 @@ from online_judge.api import User
 from online_judge.models.problems import Problem
 from online_judge.models.contests import Contest,ContestUser
 from online_judge.models.submissions import Submission
+from datetime import datetime
 import os,time
 import re
 import logging
@@ -19,6 +20,7 @@ def code_check(code,language):
 def process_verdict(verdict):
     if "CompileError" in verdict:
         # 使用正则表达式匹配完整错误信息
+        print(f"status =\n {verdict}")
         match = re.search(r'CompileError\("(.*?)"\)', verdict, re.DOTALL)
         error_message = match.group(1)
         # 处理转义字符并过滤路径
@@ -26,10 +28,36 @@ def process_verdict(verdict):
         # 使用正则表达式移除路径前缀（保留行号）
         formatted_error = re.sub(r'/.*(/src\.cpp)', r'src.cpp', formatted_error)
         # 处理行末的转义符
-        return "CompileError",formatted_error.replace('\n', '\n').strip()
+        return "CompileError",formatted_error.replace('\n', '\n').strip(),0,0
     else:
+        status = "SystemError"
+        time_used = 0  # 单位：ms
+        memory_used = 0 # 单位：bytes
+
+        # 使用多行模式解析
         lines = [line.strip() for line in verdict.split('\n') if line.strip()]
-        return (lines[-1] if lines else ""),("")
+        
+        # 解析状态（取第三行）
+        if len(lines) >= 3:
+            status = lines[2]
+        
+        # 解析时间和内存（取第四行）
+        if len(lines) >= 4:
+            time_pattern = r"Max time:\s*([\d.]+)(ms|s)"
+            mem_pattern = r"Max memory:\s*(\d+)\s*bytes"
+            
+            # 解析时间
+            time_match = re.search(time_pattern, lines[3])
+            if time_match:
+                value, unit = time_match.groups()
+                time_used = float(value) * 1000 if unit == "s" else float(value)
+            
+            # 解析内存
+            mem_match = re.search(mem_pattern, lines[3])
+            if mem_match:
+                memory_used = int(mem_match.group(1))
+
+        return status, "", time_used, memory_used  # 时间转为整数毫秒
 
 
 def Judge(submission_id):
@@ -50,7 +78,7 @@ def Judge(submission_id):
         workspace_folder = os.getenv('JUDGER_PATH')
         if not workspace_folder or not os.path.isdir(workspace_folder):
             logging.error(f"Invalid JUDGER_PATH: {workspace_folder}")
-            submission.update_result_from_pending("SystemError", ce_info="评测环境配置错误")
+            submission.update_result_from_pending("SystemError", ce_info=f"Invalid JUDGER_PATH: {workspace_folder}")
             return
 
         # 创建临时工作区
@@ -79,7 +107,6 @@ def Judge(submission_id):
                 "--problem-slug", str(submission.problem_id),
                 "--language", submission.language,
                 "--src-path", src_path,
-                "--output-format", "json"  # 要求评测器输出JSON格式
             ]
 
             # 执行评测
@@ -88,28 +115,31 @@ def Judge(submission_id):
                 cwd=workspace_folder,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                text=True,
                 timeout=30,  # 设置超时时间
                 check=True   # 非零退出码触发异常
             )
-            status,information = process_verdict(result.stdout)
-            #TODO update TL&ML
+
+            status, information, time_used, memory_used = process_verdict(result.stdout)
             if status == "CompileError":
                 # 清理路径信息
                 submission.update_result_from_pending(
-                    status,
+                    status=status,
                     time_used=0,
                     memory_used=0,
                     ce_info=information
                 )
             else:
                 submission.update_result_from_pending(
-                    status,
-                    time_used=0,
-                    memory_used=0
+                    status=status,
+                    time_used=time_used,
+                    memory_used=memory_used,
                 )
 
     except Exception as e:
-        logging.critical(f"Critical error in Judge: {str(e)}", exc_info=True)
+        # logging.critical(f"Critical error in Judge: {str(e)}", exc_info=True)
+        print(f"Critical error in Judge: {str(e)}")
+    
         if submission:
             submission.update_result_from_pending("SystemError", ce_info="system error")
     finally:
@@ -143,9 +173,10 @@ def submit():
             return jsonify({"error": "the contest is not available for the user"}),404   
         if problem_id not in Contest.query.filter_by(id=contest_id).first().get_problems():
             return jsonify({"error": "the contest don't have this problem"}),404
-    submission = Submission(code=code,user_id=user.id,problem_id=problem_id,
-                            submit_time=time.time())
+    submission = Submission(code=code,user_id=user.id,problem_id=problem_id,language=language,contest_id=contest_id,
+                            submit_time=datetime.now())
     submission.save()
-    Judge(submission.id)
-    return jsonify({"OK": f"submission_id = {submission.id},ok!"})
+    submission_id = submission.id    
+    Judge(submission_id)
+    return jsonify({"OK": f"submission_id = {submission_id},ok!","submission_id":submission_id})
 

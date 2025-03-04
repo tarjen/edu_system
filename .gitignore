@@ -7,3 +7,5 @@ data.db
 __pycache__
 .DS_Store
 testpython.py
+deepseek.txt
+output.txt
