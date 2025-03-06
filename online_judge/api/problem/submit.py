@@ -121,6 +121,7 @@ def Judge(submission_id):
             )
 
             status, information, time_used, memory_used = process_verdict(result.stdout)
+            print(f"test_stderr = {result.stderr}")
             if status == "CompileError":
                 # 清理路径信息
                 submission.update_result_from_pending(

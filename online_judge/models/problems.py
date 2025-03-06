@@ -14,6 +14,7 @@ class Problem(db.Model):
 
     time_limit = db.Column(db.Integer)
     memory_limit = db.Column(db.Integer)
+    statement = db.Column(db.Text)
 
     difficulty = db.Column(db.Integer)
     accept_num = db.Column(db.Integer)
@@ -23,7 +24,7 @@ class Problem(db.Model):
 
     tags = db.relationship('Tag', secondary='problem_tag', backref='problems')
 
-    def __init__(self, title, user_id,user_name,difficulty,
+    def __init__(self, title, user_id,user_name,difficulty,statement,
                  is_public=False,time_limit=1000, memory_limit=256
                  ):
         self.title = title
@@ -33,6 +34,7 @@ class Problem(db.Model):
 
         self.time_limit = time_limit
         self.memory_limit = memory_limit
+        self.statement = statement
 
         self.accept_num = 0
         self.submit_num = 0

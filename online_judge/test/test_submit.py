@@ -79,20 +79,22 @@ class SubmitAPITestCase(unittest.TestCase):
         problems = [
             Problem(
                 title="Problem 1",
+                statement="Statement 1",
                 user_id=1,
                 user_name="admin",  # 对应User.username
                 difficulty=1,
                 is_public=True,
-                time_limit=1000,    # 默认值
+                time_limit=1,    # 默认值
                 memory_limit=256    # 默认值
             ),
             Problem(
                 title="Problem 2",
+                statement="Statement 1",
                 user_id=1,
                 user_name="admin",
                 difficulty=2,
                 is_public=False,
-                time_limit=2000,
+                time_limit=2,
                 memory_limit=512
             )
         ]
@@ -211,8 +213,30 @@ class SubmitAPITestCase(unittest.TestCase):
         self.assertEqual(problem.submit_num, 1)  # 接续前一个测试
         self.assertEqual(problem.accept_num, 1)
 
-    def test_submit_cpp_tle(self):
+    def test_submit_cpp_wa(self):
         """测试C++错误答案（WrongAnswer）"""
+        data = {
+            'problem_id': 1,
+            'contest_id': 1,
+            'code': self._read_test_code('test_cpp_wa.txt'),
+            'language': 'cpp'
+        }
+        
+        resp = self.client.post('/api/problem/submit',
+                              json=data,
+                              headers=self.get_headers('user'))
+        
+        self.assertEqual(resp.status_code, 200)
+        submission_id = int(resp.json.get("submission_id"))
+        submission = Submission.query.filter_by(id=submission_id).first()
+        self.assertEqual(submission.status, 'WrongAnswer')
+        
+        problem = Problem.query.filter_by(id=1).first()
+        self.assertEqual(problem.submit_num, 1)
+        self.assertEqual(problem.accept_num, 0)
+
+    def test_submit_cpp_tle(self):
+        """测试C++错误答案（TLE）"""
         data = {
             'problem_id': 1,
             'contest_id': 1,

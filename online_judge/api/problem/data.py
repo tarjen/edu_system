@@ -48,7 +48,7 @@ def update_problem_data(problem_id):
     current_user = User(get_jwt())
 
     # 查询题目
-    problem = Problem.query.get(problem_id)
+    problem = Problem.query.filter_by(id=problem_id).first()
     if not problem:
         return jsonify({"error": "the problem is not available"}), 404
 

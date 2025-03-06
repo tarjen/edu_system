@@ -4,7 +4,7 @@ from flask import Flask,jsonify,request,logging
 from online_judge import app,db,jwt_required,get_jwt
 from online_judge.api import User
 from online_judge.models import Problem,Tag,ContestUser,Contest
-@app.route('/api/problem/statement/get', methods=['GET'])
+@app.route('/api/problem/statement/get', methods=['POST'])
 @jwt_required()
 def get_problem_statement():
     """
@@ -26,7 +26,7 @@ def get_problem_statement():
                 - id: 题目 ID
                 - title: 题目标题
                 - statement: 题目描述（Markdown 格式）
-                - time_limit: 时间限制（毫秒）
+                - time_limit: 时间限制（秒）
                 - memory_limit: 内存限制（MB）
                 - 其他元数据...
             失败时返回对应的错误信息和状态码
@@ -39,11 +39,10 @@ def get_problem_statement():
     contest_id = data.get('contest_id')
 
     problem = Problem.query.filter_by(id=problem_id).first()
-
-    if problem is None or (problem.is_public == False and contest_id == 0):
+    if problem is None or (problem.is_public == False and contest_id is None and problem.user_id != user.id):
         return jsonify({"error": "problem is not available"}),404
     
-    if contest_id != 0:
+    if contest_id != None:
         contestuser = ContestUser.query.filter_by(contest_id=contest_id,user_id=user.id).first()
         if contestuser is None:
             return jsonify({"error": "the contest is not available for the user"}),404    
@@ -59,12 +58,13 @@ def get_problem_statement():
     problem_json["writer"] = problem.user_name
     problem_json["time_limit"] = problem.time_limit
     problem_json["memory_limit"] = problem.memory_limit
-    problem_json["tags"] = [tag.name for tag in problem.tags.all()]  # 替换get_tags_string()
+    problem_json["tags"] = [tag.name for tag in problem.tags]  # 替换get_tags_string()
     problem_json["accept_num"] = problem.accept_num
     problem_json["submit_num"] = problem.submit_num
     problem_json["is_public"] = problem.is_public
-    problem_json["used_time"] = problem.used_time
-    return jsonify(problem_json)
+    problem_json["used_times"] = problem.used_times
+    problem_json["statement"] = problem.statement
+    return jsonify(problem_json),200
 
 @app.route('/api/problem/statement/update/<int:problem_id>', methods=['POST'])
 @jwt_required()
@@ -100,11 +100,11 @@ def update_problem_statement(problem_id):
 
         # 替换原有problem.tags字符串赋值逻辑
     tag_names = problem_json.get("tags", [])
-    current_tags = {tag.name for tag in problem.tags.all()}
+    current_tags = {tag.name for tag in problem.tags}
     new_tags = set(tag_names)
 
     # 删除不再关联的标签
-    for tag in problem.tags.all():
+    for tag in problem.tags:
         if tag.name not in new_tags:
             problem.tags.remove(tag)
 
@@ -119,7 +119,7 @@ def update_problem_statement(problem_id):
     problem.save()
 
     # update file 
-    problem_path = os.join(os.getenv('PROBLEM_PATH'),str(problem_id))
+    problem_path = os.path.join(os.getenv('PROBLEM_PATH'),str(problem_id))
     timelimit_file_path = os.path.join(problem_path, '.timelimit')
     with open(timelimit_file_path, 'w') as f:
         f.write(str(problem.time_limit))
@@ -131,12 +131,6 @@ def update_problem_statement(problem_id):
 
     # 修改problem.yaml文件中limits:memory的值为ml
     data['limits']['memory'] = problem.memory_limit
-
-    problem_statement_path = os.path.join(problem_path, "problem_statement")
-
-    # 写入 problem.md
-    with open(os.path.join(problem_statement_path, 'problem.md'), 'w', encoding='utf-8') as f:
-        f.write(problem.statement)
 
     with open(yaml_file_path, 'w') as f:
         yaml.dump(data, f)
@@ -211,19 +205,12 @@ def create_problem():
         yaml_data = {
             'limits': {
                 'memory': new_problem.memory_limit,
-                'output': "8MB"
+                'output': "8"
             },
         }
         with open(os.path.join(problem_path, 'problem.yaml'), 'w') as f:
             yaml.safe_dump(yaml_data, f)
 
-        # 创建题目标题描述目录
-        problem_statement_path = os.path.join(problem_path, "problem_statement")
-        os.makedirs(problem_statement_path, exist_ok=True)
-
-        # 写入 problem.md
-        with open(os.path.join(problem_statement_path, 'problem.md'), 'w', encoding='utf-8') as f:
-            f.write(new_problem.statement)
         return jsonify({
             "OK": "create problem success",
             "problem_id": new_problem.id

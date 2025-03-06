@@ -72,20 +72,22 @@ class ContestAPITestCase(unittest.TestCase):
         problems = [
             Problem(
                 title="Problem 1",
+                statement="Statement 1",
                 user_id=1,
                 user_name="admin",  # 对应User.username
                 difficulty=1,
                 is_public=True,
-                time_limit=1000,    # 默认值
+                time_limit=1,    # 默认值
                 memory_limit=256    # 默认值
             ),
             Problem(
                 title="Problem 2",
+                statement="Statement 1",
                 user_id=1,
                 user_name="admin",
                 difficulty=2,
                 is_public=False,
-                time_limit=2000,
+                time_limit=2,
                 memory_limit=512
             )
         ]
@@ -252,6 +254,39 @@ class ContestAPITestCase(unittest.TestCase):
                             headers=self.get_headers('user'))
         self.assertEqual(resp.status_code, 200)
         self.assertListEqual(resp.json, [])
+    def test_get_contest_users_success(self):
+        """测试成功获取比赛用户列表"""
+        # 发送请求获取比赛1的用户
+        response = self.client.get('/api/contest/get_all_user/1')
+        
+        # 验证状态码
+        self.assertEqual(response.status_code, 200)
+        
+        # 验证返回数据结构
+        self.assertIsInstance(response.json, list)
+        self.assertEqual(len(response.json), 2)
+        
+        # 验证用户ID和顺序（按加入时间排序）
+        self.assertEqual(response.json, [1, 2])
+
+    def test_get_contest_users_not_found(self):
+        """测试比赛不存在的情况"""
+        # 发送请求获取不存在的比赛
+        response = self.client.get('/api/contest/get_all_user/999')
+        
+        # 验证状态码和错误信息
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json, {"error": "contest not found"})
+
+    def test_get_contest_users_empty(self):
+        """测试比赛存在但无用户的情况"""
+        # 发送请求获取比赛2的用户
+        response = self.client.get('/api/contest/get_all_user/2')
+        
+        # 验证状态码和空列表
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, [])
+
 
     def test_authorization(self):
         """测试所有接口的授权验证"""
