@@ -1,2 +1,2 @@
-s = input()
-print(f"Hello! {s}")
+a,b = map(int,input().split())
+print(a+b)

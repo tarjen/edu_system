@@ -181,7 +181,7 @@ class ProblemAPITestCase(unittest.TestCase):
         response = self.client.post('/api/problem/create',
                                   json=data,
                                   headers=headers)
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, 200)
         new_id = response.json['problem_id']
         
         # 验证数据库记录
@@ -212,7 +212,7 @@ class ProblemAPITestCase(unittest.TestCase):
         headers = self.get_headers('admin')
         invalid_data = {
             "title": "Incomplete Problem",
-            "time_limit": 1000,
+            "time_limit": 1
             # 缺少memory_limit等字段
         }
         response = self.client.post('/api/problem/create',
@@ -244,16 +244,16 @@ class ProblemAPITestCase(unittest.TestCase):
         create_res = self.client.post('/api/problem/create',
                                     json=create_data,
                                     headers=create_headers)
-        self.assertEqual(create_res.status_code, 201)
+        self.assertEqual(create_res.status_code, 200)
         new_problem_id = create_res.json['problem_id']
 
         # 生成测试ZIP文件
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w') as zf:
             zf.writestr('1.in', 'input')
-            zf.writestr('1.out', 'output')
+            zf.writestr('1.ans', 'output')
             zf.writestr('2.in', 'input2')
-            zf.writestr('2.out', 'output2')
+            zf.writestr('2.ans', 'output2')
         zip_buffer.seek(0)
         
         # 使用新题目ID上传数据
@@ -274,7 +274,7 @@ class ProblemAPITestCase(unittest.TestCase):
         # 创建新题目
         create_headers = self.get_headers('admin')
         create_data = {
-            "title": "Problem 2",
+            "title": "Problem 4",
             "time_limit": 2,
             "memory_limit": 512,
             "statement": "Another problem",
@@ -285,7 +285,7 @@ class ProblemAPITestCase(unittest.TestCase):
         create_res = self.client.post('/api/problem/create',
                                     json=create_data,
                                     headers=create_headers)
-        self.assertEqual(create_res.status_code, 201)
+        self.assertEqual(create_res.status_code, 200)
         new_problem_id = create_res.json['problem_id']
 
         # 生成无效ZIP文件
@@ -300,11 +300,90 @@ class ProblemAPITestCase(unittest.TestCase):
                                 data={'file': (zip_buffer, 'bad.zip')},
                                 headers=headers,
                                 content_type='multipart/form-data')
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 404)
         
         # 验证题目元数据未改变
         problem = Problem.query.filter_by(id=new_problem_id).first()
         self.assertEqual(problem.memory_limit, 512)
+    
+    def test_filter_by_title(self):
+        """测试标题模糊搜索"""
+        data = {"title": "Problem"}
+        response = self.client.post('/api/problem/filter', json=data)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(1, response.json)
+
+    def test_filter_by_tags(self):
+        """测试标签过滤"""
+        # 给题目1添加标签
+        problem = Problem.query.filter_by(id=1).first()
+        tag = Tag.query.filter_by(name='algorithm').first()
+        problem.tags.append(tag)
+        db.session.commit()
+
+        response = self.client.post('/api/problem/filter', json={"tags": ["algorithm"]})
+        self.assertEqual(response.json, [1])
+
+    def test_filter_by_difficulty_range(self):
+        """测试难度范围过滤"""
+        # 创建不同难度的题目
+        p2 = Problem(title="Problem 2", user_id=1, user_name="admin", difficulty=3, statement="...")
+        db.session.add(p2)
+        db.session.commit()
+        response = self.client.post('/api/problem/filter', json={
+            "min_difficulty": 2,
+            "max_difficulty": 3
+        })
+        self.assertCountEqual(response.json, [2])
+
+    def test_filter_by_usage_range(self):
+        """测试使用次数过滤"""
+        # 设置题目1的使用次数
+        problem = Problem.query.filter_by(id=1).first()
+        problem.used_times = 5
+        db.session.commit()
+
+        response = self.client.post('/api/problem/filter', json={
+            "min_used": 4,
+            "max_used": 6
+        })
+        self.assertEqual(response.json, [1])
+
+    def test_exclude_recent_used(self):
+        """测试排除近期使用"""
+        # 创建新题目（未被使用过）
+        p2 = Problem(title="Problem 2", user_id=1, user_name="admin", difficulty=1, statement="...")
+        db.session.add(p2)
+        db.session.commit()
+
+        response = self.client.post('/api/problem/filter', json={
+            "recent_unused": True
+        })
+        self.assertNotIn(1, response.json)
+        self.assertIn(p2.id, response.json)
+
+    def test_invalid_tag_filter(self):
+        """测试无效标签过滤"""
+        response = self.client.post('/api/problem/filter', json={
+            "tags": ["invalid_tag"]
+        })
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("Invalid tags", response.json['error'])
+
+    def test_missing_range_parameter(self):
+        """测试缺失范围参数"""
+        # 单独提供min_difficulty
+        response = self.client.post('/api/problem/filter', json={
+            "min_difficulty": 1
+        })
+        self.assertEqual(response.status_code, 404)
+
+        # 单独提供max_used
+        response = self.client.post('/api/problem/filter', json={
+            "max_used": 5
+        })
+        self.assertEqual(response.status_code, 404)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -119,7 +119,7 @@ def update_problem_statement(problem_id):
     problem.save()
 
     # update file 
-    problem_path = os.path.join(os.getenv('PROBLEM_PATH'),str(problem_id))
+    problem_path = os.path.join(os.getenv('PROBLEM_PACKAGE_PATH'),str(problem_id))
     timelimit_file_path = os.path.join(problem_path, '.timelimit')
     with open(timelimit_file_path, 'w') as f:
         f.write(str(problem.time_limit))
@@ -153,7 +153,7 @@ def create_problem():
             tags (list[string]): 标签名称列表（默认空列表）
             
     Returns:
-        成功：HTTP 201 和包含 problem_id 的JSON
+        成功：HTTP 200 和包含 problem_id 的JSON
         失败：对应错误状态码和描述
     """
     # 验证用户权限
@@ -192,7 +192,7 @@ def create_problem():
 
         # 创建题目存储目录
         problem_path = os.path.join(
-            os.getenv('PROBLEM_PATH'), 
+            os.getenv('PROBLEM_PACKAGE_PATH'), 
             str(new_problem.id)
         )
         os.makedirs(problem_path, exist_ok=True)
@@ -205,7 +205,7 @@ def create_problem():
         yaml_data = {
             'limits': {
                 'memory': new_problem.memory_limit,
-                'output': "8"
+                'output': 8
             },
         }
         with open(os.path.join(problem_path, 'problem.yaml'), 'w') as f:
@@ -214,9 +214,9 @@ def create_problem():
         return jsonify({
             "OK": "create problem success",
             "problem_id": new_problem.id
-        }), 201
+        }), 200
         
     except Exception as e:
         db.session.rollback()
         logging.error(f"create problem failed: {str(e)}")
-        return jsonify({"error": f"create problem Failed {str(e)}"}), 500
+        return jsonify({"error": f"create problem Failed {str(e)}"}), 404

@@ -11,11 +11,6 @@ void dfs(int x)
 int main()
 {
     int a,b;
-    //a=a+c;
-    //dfs(1);
-    string s;
-    cin >> s;
-    cout << "Hello! " << s << endl;
-    //ttqq;
-    //ccbb;
+    cin>>a>>b;
+    cout<<a+b;
 }

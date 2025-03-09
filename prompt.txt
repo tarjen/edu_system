@@ -1,0 +1,78 @@
+我需要你帮我出一场比赛，要求如下：
+接下来我将会给你若干个题目，每个题目用一个json表示，里面包含：题目编号，题目的难度，提交数，通过数，难度，使用次数，题目类型
+给出所有题目后，我会给你比赛要求，用一个json表示比赛要求，里面包含：平均难度，题目数量，平均通过率，平均使用次数，可以包含的题目类型
+你只需要给我返回一个题目编号的list即可
+
+
+
+
+帮我编写一个选择题目的api，要求如下
+
+首先进行用户检测，要求power>=2
+
+接着读取post里面的json，里面必须要有 平均难度，题目数量，平均通过率，平均使用次数，是否使用6个月以内的题目，可以包含的题目类型
+
+接着判断 “是否使用6个月里面的题目”和“可以包含的题目类型”，筛选出所有可用题目,接着用一个json表示他们，里面包含：题目编号，题目的难度，提交数，通过数，难度，使用次数，题目类型
+
+接着发送以下文本给deepseek，prompt是“我需要你帮我出一场比赛，要求如下：
+接下来我将会给你若干个题目，每个题目用一个json表示，里面包含：题目编号，题目的难度，提交数，通过数，难度，使用次数，题目类型
+给出所有题目后，我会给你比赛要求，用一个json表示比赛要求，里面包含：平均难度，题目数量，平均通过率，平均使用次数，可以包含的题目类型
+你只需要给我返回一个题目编号的list即可”
+
+并且把prompt里面的两个json附在信息里发送给deepseek，调用方法如下：
+
+def call_ai_api(
+    messages: List[Dict[str, str]],
+    model: str = "deepseek-r1-250120",
+    stream: bool = False
+) -> Dict[str, Union[str, Dict]]:
+    """
+    调用火山引擎AI模型的API
+    
+    :param messages: 消息列表，格式 [{"role": "user", "content": "你的问题"}]
+    :param model: 使用的模型名称（默认deepseek-r1-250120）
+    :param stream: 是否使用流式传输（默认False）
+    :return: 结构化响应，包含content/reasoning_content或错误信息
+    """
+    try:
+        # 初始化客户端（推荐从环境变量读取认证信息）
+        client = Ark(
+            api_key=os.getenv("ARK_API_KEY"),
+            # 或使用ak/sk方式:
+            # ak=os.getenv("VOLC_ACCESSKEY"),
+            # sk=os.getenv("VOLC_SECRETKEY"),
+            timeout=httpx.Timeout(1800)
+        )
+        
+        # 发起请求
+        if stream:
+            response_stream = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                stream=True
+            )
+            
+            # 处理流式响应
+            full_content = ""
+            for chunk in response_stream:
+                if chunk.choices:
+                    content = chunk.choices[0].delta.reasoning_content or chunk.choices[0].delta.content
+                    if content:
+                        full_content += content
+            return {"content": full_content}
+        else:
+            # 处理标准响应
+            completion = client.chat.completions.create(
+                model=model,
+                messages=messages
+            )
+            return {
+                "content": completion.choices[0].message.content,
+                "reasoning_content": completion.choices[0].message.reasoning_content
+            }
+            
+    except Exception as e:
+        return {"error": str(e)}
+
+
+最后读取返回的题目编号列表，返回

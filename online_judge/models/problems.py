@@ -25,6 +25,7 @@ class Problem(db.Model):
     tags = db.relationship('Tag', secondary='problem_tag', backref='problems')
 
     def __init__(self, title, user_id,user_name,difficulty,statement,
+                 submit_num=0,accept_num=0,
                  is_public=False,time_limit=1000, memory_limit=256
                  ):
         self.title = title
@@ -36,8 +37,8 @@ class Problem(db.Model):
         self.memory_limit = memory_limit
         self.statement = statement
 
-        self.accept_num = 0
-        self.submit_num = 0
+        self.accept_num = accept_num
+        self.submit_num = submit_num
         self.is_public = is_public
         self.used_times = 0
 

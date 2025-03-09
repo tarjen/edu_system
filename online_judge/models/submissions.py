@@ -60,7 +60,7 @@ class Submission(db.Model):
         self.save()
         #update contests info
 
-        if self.contest_id is None:
+        if self.contest_id is None or self.contest_id == 0:
             return
         contest_end_time = Contest.query.filter_by(id=self.contest_id).first().end_time
         if self.problem_id != None and self.submit_time <= contest_end_time:

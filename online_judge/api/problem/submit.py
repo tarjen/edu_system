@@ -5,6 +5,7 @@ from online_judge.models.problems import Problem
 from online_judge.models.contests import Contest,ContestUser
 from online_judge.models.submissions import Submission
 from datetime import datetime
+import pytz
 import os,time
 import re
 import logging
@@ -121,7 +122,7 @@ def Judge(submission_id):
             )
 
             status, information, time_used, memory_used = process_verdict(result.stdout)
-            print(f"test_stderr = {result.stderr}")
+            # print(f"test_stderr = {result.stderr}")
             if status == "CompileError":
                 # 清理路径信息
                 submission.update_result_from_pending(
@@ -150,15 +151,64 @@ def Judge(submission_id):
 @app.route('/api/problem/submit', methods=['POST'])
 @jwt_required()
 def submit():
+    """
+    处理代码提交请求，支持比赛/练习两种模式。
     
+    用户提交代码后，系统将进行合法性检查并触发自动评测。比赛提交需满足：
+    - 用户在参赛名单中
+    - 提交时间在比赛时段内
+    - 题目属于比赛题目
+    
+    Args:
+        
+        JSON参数:
+            problem_id (int): 必填，提交的题目ID
+            code (str): 必填，用户提交的源代码
+            language (str): 必填，编程语言（如python/cpp）
+            contest_id (int, optional): 关联的比赛ID，默认0表示练习模式
+            submit_time (str, optional): 提交时间（GMT格式），默认当前时间
+            
+    Returns:
+        JSON: 包含提交ID的响应，格式：
+            成功 (200):
+                {
+                    "OK": "submission_id = <id>,ok!",
+                    "submission_id": <int>
+                }
+            错误时返回对应状态码和错误描述，例如：
+    """
     user = User(get_jwt())
     data = request.get_json()
 
-    # 从请求体中提取所需的数据  
-    problem_id = data.get('problem_id')
-    contest_id = data.get('contest_id')
-    code = data.get('code')
-    language = data.get('language')
+    # 参数验证
+    required_fields = ['problem_id', 'code', 'language']
+    if not all(field in data for field in required_fields):
+        return jsonify({"error": "Missing required parameters (problem_id/code/language)"}), 400
+
+    # 提取并处理参数
+    problem_id = data['problem_id']
+    code = data['code']
+    language = data['language']
+    contest_id = data.get('contest_id', 0)  # 默认值0表示非比赛提交
+
+    # 在路由函数中修改时间处理部分
+    if 'submit_time' in data:
+        try:
+            # 解析RFC 1123格式时间
+            submit_time = datetime.strptime(
+                data['submit_time'], 
+                "%a, %d %b %Y %H:%M:%S %Z"
+            )
+            # 转换为UTC时区对象
+            submit_time = submit_time.replace(tzinfo=pytz.UTC)
+        except ValueError as e:
+            return jsonify({
+                "error": "Invalid datetime format, use 'Wed, 26 Feb 2025 08:00:00 GMT' format",
+                "example": datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
+            }), 400
+    else:
+        submit_time = datetime.now(pytz.UTC)  # 默认当前UTC时间
+
 
     problem = Problem.query.filter_by(id=problem_id).first()
 
@@ -175,9 +225,9 @@ def submit():
         if problem_id not in Contest.query.filter_by(id=contest_id).first().get_problems():
             return jsonify({"error": "the contest don't have this problem"}),404
     submission = Submission(code=code,user_id=user.id,problem_id=problem_id,language=language,contest_id=contest_id,
-                            submit_time=datetime.now())
+                            submit_time=submit_time)
     submission.save()
     submission_id = submission.id    
     Judge(submission_id)
-    return jsonify({"OK": f"submission_id = {submission_id},ok!","submission_id":submission_id})
+    return jsonify({"OK": f"submission_id = {submission_id},ok!","submission_id":submission_id}),200
 

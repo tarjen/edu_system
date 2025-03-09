@@ -48,9 +48,9 @@ class ContestUser(db.Model):
         for problem_id in problem_ids:
             pid = str(problem_id)
             if pid in score_details:
-                if score_details[problem_id]["solve_time"] != -1:
+                if score_details[pid]["solve_time"] != -1:
                     score += 1
-                    penalty += score_details["solve_time"] + score_details[pid]["attempts"] * PENALTY_PER_ATTEMPT
+                    penalty += score_details[pid]["solve_time"] + score_details[pid]["attempts"] * PENALTY_PER_ATTEMPT
         return score,penalty
 
     def update_score(self, submission):
@@ -59,20 +59,21 @@ class ContestUser(db.Model):
         if pid not in score_details:
             score_details[pid] = {}
             score_details[pid]["solve_time"]=-1
-            score_details[pid]["attempts"]=0;
+            score_details[pid]["attempts"]=0
         else:
             if score_details[pid]["solve_time"] != -1: # Have accepted
                 return
             
         if submission.status == "Accepted":
             contest_start_time = Contest.query.filter_by(id=self.contest_id).first().start_time
-            score_details["solve_time"] = (submission.submit_time-contest_start_time).total_seconds() // 60
+            score_details[pid]["solve_time"] = (submission.submit_time-contest_start_time).total_seconds() // 60
             # self.time_spent += score_details["solve_time"] + score_details[pid]["attempts"] * PENALTY_PER_ATTEMPT
             # self.score += 1
         else:
             score_details[pid]["attempts"] += 1
 
         self.score_details = json.dumps(score_details)
+        # print(f"test === {self.score_details}")
         self.save()
 
     def get_score_details(self):
