@@ -6,6 +6,12 @@
 
 ---
 
+## `/api/data` (GET)
+*文件位置*: `online_judge/__init__.py`
+
+
+---
+
 ## `/api/contest/filter` (POST)
 *文件位置*: `online_judge/api/contest/show.py`
 
@@ -141,6 +147,44 @@ list[dict]: 提交记录列表,每个字典包含:
             "time_used": 500,
             "memory_used": 128
         }]
+```
+
+---
+
+## `/api/contest/select_problems` (POST)
+*文件位置*: `online_judge/api/contest/gen_contest.py`
+
+**描述**: 智能选题接口，根据比赛要求筛选并返回题目集合。
+
+使用AI模型从候选题库中选择符合比赛参数要求的题目组合。需要管理员权限。
+
+### 参数说明
+- `Authorization` (str): 请求头中的JWT令牌，格式：Bearer <token>
+- JSON参数:
+- `average_difficulty` (float): 要求的平均难度（1-5）
+- `problem_count` (int): 需要选择的题目数量
+- `average_accept_rate` (float): 目标平均通过率（0-1）
+- `average_used_times` (int): 允许的平均使用次数
+- `allow_recent_used` (bool): 是否允许使用近6个月用过的题目
+- `allowed_types` (list[str]): 允许的题目类型标签列表
+### 返回结构
+```
+JSON: 包含选中题目ID列表的响应，格式：
+        {
+            "selected_problems": [int]
+        }
+        
+示例请求:
+    POST /api/contest/select_problems
+    Headers: { Authorization: Bearer <admin_token> }
+    Body: {
+        "average_difficulty": 3,
+        "problem_count": 5,
+        "average_accept_rate": 0.6,
+        "average_used_times": 2,
+        "allow_recent_used": false,
+        "allowed_types": ["算法", "图论"]
+    }
 ```
 
 ---
@@ -328,7 +372,7 @@ Notes:
 ```
 JSON响应:
     - 200 OK: {"OK": "Problem data updated successfully"}
-    - 400 Bad Request: {"error": "错误描述"}
+    - 404 Bad Request: {"error": "错误描述"}
     - 403 Forbidden: {"error": "权限不足"}
     - 404 Not Found: {"error": "题目不存在"}
 
@@ -340,14 +384,36 @@ Notes:
     1. ZIP文件结构示例:
        |
        |--1.in
-       |--1.out
-    2. 数据要求：从1开始编号，最多30个测试点，一个.in对应一个.out
+       |--1.ans
+    2. 数据要求：从1开始编号，最多30个测试点，一个.in对应一个.ans
 ```
 
 ---
 
-## `/api/problem/statement/get` (GET)
-*文件位置*: `online_judge/api/problem/statement.py`
+## `/api/problem/filter` (POST)
+*文件位置*: `online_judge/api/problem/filter.py`
+
+**描述**: 题目筛选接口
+
+Args (JSON Body):
+    title (str, optional): 题目名称模糊搜索
+    tags (list[str], optional): 必须包含的标签列表
+    min_difficulty (int, optional): 难度下限(与max_difficulty必须成对使用)
+    max_difficulty (int, optional): 难度上限
+    min_used (int, optional): 使用次数下限(与max_used必须成对使用)
+    max_used (int, optional): 使用次数上限
+    recent_unused (bool, optional): 是否排除半年内使用过的题目(默认false)
+
+### 返回结构
+```
+JSON Response:
+        list[int]: 符合条件的题目ID列表
+```
+
+---
+
+## `/api/problem/statement/get` (POST)
+*文件位置*: `online_judge/api/problem/problem.py`
 
 **描述**: 获取指定题目的详细信息说明
 
@@ -367,7 +433,7 @@ JSON Response:
             - id: 题目 ID
             - title: 题目标题
             - statement: 题目描述（Markdown 格式）
-            - time_limit: 时间限制（毫秒）
+            - time_limit: 时间限制（秒）
             - memory_limit: 内存限制（MB）
             - 其他元数据...
         失败时返回对应的错误信息和状态码
@@ -376,7 +442,7 @@ JSON Response:
 ---
 
 ## `/api/problem/statement/update/<int:problem_id>` (POST)
-*文件位置*: `online_judge/api/problem/statement.py`
+*文件位置*: `online_judge/api/problem/problem.py`
 
 **描述**: 上传指定题目的信息
 
@@ -394,7 +460,7 @@ JSON Response:
 ---
 
 ## `/api/problem/create` (POST)
-*文件位置*: `online_judge/api/problem/statement.py`
+*文件位置*: `online_judge/api/problem/problem.py`
 
 **描述**: 创建新题目
 
@@ -409,7 +475,7 @@ JSON Response:
 - `tags` (list[string]): 标签名称列表（默认空列表）
 ### 返回结构
 ```
-成功：HTTP 201 和包含 problem_id 的JSON
+成功：HTTP 200 和包含 problem_id 的JSON
     失败：对应错误状态码和描述
 ```
 
@@ -418,5 +484,29 @@ JSON Response:
 ## `/api/problem/submit` (POST)
 *文件位置*: `online_judge/api/problem/submit.py`
 
+**描述**: 处理代码提交请求，支持比赛/练习两种模式。
+
+用户提交代码后，系统将进行合法性检查并触发自动评测。比赛提交需满足：
+- 用户在参赛名单中
+- 提交时间在比赛时段内
+- 题目属于比赛题目
+
+### 参数说明
+- JSON参数:
+- `problem_id` (int): 必填，提交的题目ID
+- `code` (str): 必填，用户提交的源代码
+- `language` (str): 必填，编程语言（如python/cpp）
+- `contest_id` (int, optional): 关联的比赛ID，默认0表示练习模式
+- `submit_time` (str, optional): 提交时间（GMT格式），默认当前时间
+### 返回结构
+```
+JSON: 包含提交ID的响应，格式：
+        成功 (200):
+            {
+                "OK": "submission_id = <id>,ok!",
+                "submission_id": <int>
+            }
+        错误时返回对应状态码和错误描述，例如：
+```
 
 ---
