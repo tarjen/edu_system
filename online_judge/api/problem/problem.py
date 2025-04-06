@@ -64,6 +64,7 @@ def get_problem_statement():
     problem_json["is_public"] = problem.is_public
     problem_json["used_times"] = problem.used_times
     problem_json["statement"] = problem.statement
+    problem_json["difficulty"] = problem.difficulty
     return jsonify(problem_json),200
 
 @app.route('/api/problem/statement/update/<int:problem_id>', methods=['POST'])
