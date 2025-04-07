@@ -1,3 +1,3 @@
 limits:
-  memory: 2048
+  memory: 255
   output: 8

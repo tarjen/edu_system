@@ -9,3 +9,4 @@ __pycache__
 testpython.py
 deepseek.txt
 output.txt
+problem_data/*

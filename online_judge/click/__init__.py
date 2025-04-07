@@ -1,1 +1,1 @@
-from .click import *
+from .gen_database import *

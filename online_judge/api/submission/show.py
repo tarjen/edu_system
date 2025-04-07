@@ -118,11 +118,12 @@ def get_submission(submission_id):
         2. 编译错误信息仅在状态为CompileError时返回
     """
     current_user = User(get_jwt())
+
+    submission = Submission.query.get(submission_id)
     # 添加权限过滤
     if current_user.power < 2:  # 普通用户只能查自己
         if submission.user_id != current_user.id:
             return jsonify({"error": "user can't view this submission"}), 404
-    submission = Submission.query.get(submission_id)
 
     if submission is None:
         return jsonify({"error": "Submission not found"}), 404

@@ -35,6 +35,8 @@ jwt = JWTManager(app)
 from .api import *
 from .models import *
 from .click import *
+
+register_commands(app)
 @app.route("/protected", methods=["GET"])
 @jwt_required()
 def protected():
