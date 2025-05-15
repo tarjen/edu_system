@@ -1,14 +1,52 @@
 # API 文档
 
+## `/api/data` (GET)
+*文件位置*: `online_judge/__init__.py`
+
+
+---
+
 ## `/protected` (GET)
 *文件位置*: `online_judge/__init__.py`
 
 
 ---
 
-## `/api/data` (GET)
-*文件位置*: `online_judge/__init__.py`
+## `/api/contest/select_problems` (POST)
+*文件位置*: `online_judge/api/contest/gen_contest.py`
 
+**描述**: 题目选择接口，根据比赛要求筛选并返回题目集合。
+
+从候选题库中选择符合比赛参数要求的题目组合。需要管理员权限。
+
+### 参数说明
+- `Authorization` (str): 请求头中的JWT令牌，格式：Bearer <token>
+- JSON参数:
+- `average_difficulty` (float): 要求的平均难度（1-5）
+- `problem_count` (int): 需要选择的题目数量
+- `average_accept_rate` (float): 目标平均通过率（0-1）
+- `average_used_times` (int): 允许的平均使用次数
+- `allow_recent_used` (bool): 是否允许使用近6个月用过的题目
+- `allowed_types` (list[str]): 允许的题目类型标签列表
+### 返回结构
+```
+JSON: 包含选中题目ID列表的响应，格式：
+        {
+            "selected_problems": [int]
+        }
+        
+示例请求:
+    POST /api/contest/select_problems
+    Headers: { Authorization: Bearer <admin_token> }
+    Body: {
+        "average_difficulty": 3,
+        "problem_count": 5,
+        "average_accept_rate": 0.6,
+        "average_used_times": 2,
+        "allow_recent_used": false,
+        "allowed_types": ["算法", "图论"]
+    }
+```
 
 ---
 
@@ -151,44 +189,6 @@ list[dict]: 提交记录列表,每个字典包含:
 
 ---
 
-## `/api/contest/select_problems` (POST)
-*文件位置*: `online_judge/api/contest/gen_contest.py`
-
-**描述**: 智能选题接口，根据比赛要求筛选并返回题目集合。
-
-使用AI模型从候选题库中选择符合比赛参数要求的题目组合。需要管理员权限。
-
-### 参数说明
-- `Authorization` (str): 请求头中的JWT令牌，格式：Bearer <token>
-- JSON参数:
-- `average_difficulty` (float): 要求的平均难度（1-5）
-- `problem_count` (int): 需要选择的题目数量
-- `average_accept_rate` (float): 目标平均通过率（0-1）
-- `average_used_times` (int): 允许的平均使用次数
-- `allow_recent_used` (bool): 是否允许使用近6个月用过的题目
-- `allowed_types` (list[str]): 允许的题目类型标签列表
-### 返回结构
-```
-JSON: 包含选中题目ID列表的响应，格式：
-        {
-            "selected_problems": [int]
-        }
-        
-示例请求:
-    POST /api/contest/select_problems
-    Headers: { Authorization: Bearer <admin_token> }
-    Body: {
-        "average_difficulty": 3,
-        "problem_count": 5,
-        "average_accept_rate": 0.6,
-        "average_used_times": 2,
-        "allow_recent_used": false,
-        "allowed_types": ["算法", "图论"]
-    }
-```
-
----
-
 ## `/api/contest/update_contest_info/<int:contest_id>` (POST)
 *文件位置*: `online_judge/api/contest/update.py`
 
@@ -277,83 +277,218 @@ JSON响应
 
 ---
 
-## `/api/submission/filter` (POST)
-*文件位置*: `online_judge/api/submission/show.py`
+## `/api/homework/generate` (POST)
+*文件位置*: `online_judge/api/homework/gen_homework.py`
 
-**描述**: 根据多条件筛选提交记录
+**描述**: 作业生成接口，根据要求自动生成作业题目集合。
 
-支持通过组合多个查询参数过滤提交记录，返回分页后的结果集
+从题库中选择符合要求的题目组合生成作业。需要教师权限。
 
 ### 参数说明
-- `user_id` (int, optional): 筛选指定用户的提交记录
-- `problem_id` (int, optional): 筛选指定题目的提交记录
-- `contest_id` (int, optional): 筛选指定比赛的提交记录
-- `language` (str, optional): 按编程语言过滤（枚举值：python/cpp）
+- `Authorization` (str): 请求头中的JWT令牌，格式：Bearer <token>
+- JSON参数:
+- `title` (str): 作业标题
+- `description` (str, optional): 作业描述
+- `start_time` (str): 开始时间,RFC 1123格式(如:Wed, 26 Feb 2025 08:00:00 GMT)
+- `end_time` (str): 结束时间,RFC 1123格式
+- `total_score` (int): 作业总分（默认100）
+- `question_count` (int): 需要的题目数量
+- `difficulty_range` (dict): 难度范围 {"min": 1, "max": 5}
+- `question_types` (list[str]): 题目类型列表，可选值：["choice", "fill"]
+- `tags` (list[str], optional): 题目标签列表
+- `student_ids` (list[int], optional): 指定的学生ID列表
 ### 返回结构
 ```
-JSON: 包含分页信息的提交记录列表
-    {
-        "submissions": [
-            {
-                "id": 123,
-                "problem_id": 456,
-                "user_id": 789,
-                "language": "python",
-                "submit_time": "2023-08-20T14:30:00",
-                "status": "Accepted",
-                "time_used": 100,    // 单位：毫秒
-                "memory_used": 2048  // 单位：KB
-            },
-            ...
-        ],
-        "pagination": {
-            "total": 100,
-            "current_page": 1,
-            "per_page": 20
+JSON: 生成的作业信息，格式：
+        {
+            "success": bool,
+            "homework": {
+                "id": int,
+                "title": str,
+                "description": str,
+                "start_time": str,
+                "end_time": str,
+                "questions": [{
+                    "id": int,
+                    "title": str,
+                    "type": str,
+                    "difficulty": int,
+                    "score": int
+                }],
+                "total_score": int,
+                "student_count": int
+            }
         }
+        
+示例请求:
+    POST /api/homework/generate
+    Headers: { Authorization: Bearer <teacher_token> }
+    Body: {
+        "title": "第一次作业",
+        "description": "这是第一次作业",
+        "start_time": "Wed, 26 Feb 2025 08:00:00 GMT",
+        "end_time": "Thu, 27 Feb 2025 08:00:00 GMT",
+        "total_score": 100,
+        "question_count": 5,
+        "difficulty_range": {"min": 2, "max": 4},
+        "question_types": ["choice", "fill"],
+        "tags": ["Python", "基础"],
+        "student_ids": [1001, 1002, 1003]
     }
-
-Raises:
-    400 Bad Request: 参数格式错误
-    500 Internal Server Error: 数据库查询异常
-
-Notes:
-    1. 当前版本未实现鉴权，后续需添加JWT验证
-    2. 分页参数将在后续版本实现
 ```
 
 ---
 
-## `/api/submission/get/<int:submission_id>` (GET)
-*文件位置*: `online_judge/api/submission/show.py`
+## `/api/homework/filter` (POST)
+*文件位置*: `online_judge/api/homework/show.py`
 
-**描述**: 获取指定提交记录的详细信息
+**描述**: 根据POST请求中的JSON参数过滤作业
 
 ### 参数说明
-- `submission_id` (int): 路径参数，提交记录的唯一标识符
+- `title` (str, optional): 作业标题模糊搜索关键词
+- `holder_name` (str, optional): 创建者名称
 ### 返回结构
 ```
-JSON: 提交记录的完整信息
-    {
-        "id": 123,
-        "code": "print('Hello World')",
-        "language": "python",
-        "user_id": 456,
-        "problem_id": 789,
-        "contest_id": 101,
-        "submit_time": "2023-08-20T14:30:00",
-        "status": "Accepted",
-        "time_used": 100,      // 单位：毫秒
-        "memory_used": 2048,   // 单位：KB
-        "compile_error_info": ""  // 编译错误信息（如有）
+list[dict]: 过滤后的作业列表
+```
+
+---
+
+## `/api/homework/show/<int:homework_id>` (GET)
+*文件位置*: `online_judge/api/homework/show.py`
+
+**描述**: 获取作业详细信息。
+
+根据用户角色返回不同级别的作业信息：
+- 管理员/创建者可以看到：
+    * 作业基本信息（标题、描述、时间等）
+    * 所有题目信息（包括答案和解释）
+    * 所有学生的提交记录和得分
+- 参与的学生可以看到：
+    * 作业基本信息
+    * 题目信息（不包含答案和解释）
+    * 自己的提交记录和得分
+- 其他用户：
+    * 无权限查看
+
+### 参数说明
+- `homework_id` (int): 作业ID
+### 返回结构
+```
+JSON: {
+        'id': int,
+        'title': str,
+        'description': str,
+        'start_time': str,  # GMT格式
+        'end_time': str,    # GMT格式
+        'holder_name': str,
+        'questions': [{
+            'id': int,
+            'title': str,
+            'content': str,
+            'type': str,
+            'score': int,
+            'options': list,  # 仅选择题
+            'answer': str,    # 仅管理员/创建者可见
+            'explanation': str  # 仅管理员/创建者可见
+        }],
+        'students': [{  # 仅管理员/创建者可见
+            'student_id': int,
+            'score': int,
+            'submit_time': str
+        }],
+        'student_record': {  # 仅学生本人可见
+            'score': int,
+            'submit_time': str,
+            'answers': list
+        }
     }
 
 Raises:
-    404 Not Found: 指定ID的提交记录不存在
+    404: 作业不存在
+    403: 没有权限查看此作业
+```
 
-Notes:
-    1. 代码内容仅对提交者/管理员可见（待实现）
-    2. 编译错误信息仅在状态为CompileError时返回
+---
+
+## `/api/homework/create` (POST)
+*文件位置*: `online_judge/api/homework/update.py`
+
+**描述**: 创建新作业
+
+### 参数说明
+- `title` (str): 作业标题
+- `start_time` (str): 开始时间,RFC 1123格式(如:Wed, 26 Feb 2025 08:00:00 GMT)
+- `end_time` (str): 结束时间,RFC 1123格式
+- `description` (str, optional): 作业描述
+- `question_list` (list[dict], optional): 初始题目列表 [{"question_id": int, "score": int}]
+- `student_ids` (list[int], optional): 学生ID列表
+### 返回结构
+```
+dict: 创建的作业信息
+```
+
+---
+
+## `/api/homework/update/<int:homework_id>` (POST)
+*文件位置*: `online_judge/api/homework/update.py`
+
+**描述**: 更新作业信息
+
+### 参数说明
+- `homework_id` (int): 作业ID
+- `title` (str, optional): 新标题
+- `start_time` (str, optional): 新开始时间
+- `end_time` (str, optional): 新结束时间
+- `description` (str, optional): 新描述
+- `question_list` (list[dict], optional): 新题目列表 [{"question_id": int, "score": int}]
+- `student_ids` (list[int], optional): 新的学生ID列表
+### 返回结构
+```
+dict: 更新后的作业信息
+```
+
+---
+
+## `/api/homework/delete/<int:homework_id>` (POST)
+*文件位置*: `online_judge/api/homework/update.py`
+
+**描述**: 删除作业
+
+### 参数说明
+- `homework_id` (int): 作业ID
+### 返回结构
+```
+dict: 操作结果
+```
+
+---
+
+## `/api/homework/submit/<int:homework_id>` (POST)
+*文件位置*: `online_judge/api/homework/update.py`
+
+**描述**: 提交作业答案。
+
+学生提交作业的接口，包含以下限制：
+- 必须是作业的学生才能提交
+- 必须在作业时间范围内提交
+- 每份作业只能提交一次，提交后不能再次提交
+
+### 参数说明
+- `homework_id` (int): 作业ID
+- `answer_list` (list): 答案列表 [{"question_id": int, "answer": str}, ...]
+### 返回结构
+```
+JSON: {
+        "success": bool,
+        "score": int,      # 得分
+        "submit_time": str  # GMT格式的提交时间
+    }
+    
+Raises:
+    400: 参数错误、作业未开始、作业已结束、已提交过
+    403: 无权限（不是作业学生）
+    404: 作业不存在
 ```
 
 ---
@@ -507,6 +642,210 @@ JSON: 包含提交ID的响应，格式：
                 "submission_id": <int>
             }
         错误时返回对应状态码和错误描述，例如：
+```
+
+---
+
+## `/api/questions/filter` (POST)
+*文件位置*: `online_judge/api/questions/filter.py`
+
+**描述**: 筛选选择题或填空题
+
+### 参数说明
+- `title` (str, optional): 题目标题模糊搜索
+- `type` (str, optional): 题目类型('choice'或'fill')
+- `tags` (list[str], optional): 必须包含的标签列表
+- `min_difficulty` (int, optional): 难度下限(与max_difficulty必须成对使用)
+- `max_difficulty` (int, optional): 难度上限
+- `min_used` (int, optional): 使用次数下限(与max_used必须成对使用)
+- `max_used` (int, optional): 使用次数上限
+- `creator_name` (str, optional): 创建者名称
+### 返回结构
+```
+list[dict]: 符合条件的题目列表
+```
+
+---
+
+## `/api/questions/get/<int:question_id>` (GET)
+*文件位置*: `online_judge/api/questions/show.py`
+
+**描述**: 获取选择题或填空题的详细信息。
+
+根据用户角色返回不同级别的题目信息：
+- 管理员/题目作者可以看到：
+    * 题目的所有基本信息
+    * 答案和解析
+    * 统计数据（提交数、正确率等）
+- 普通用户可以看到：
+    * 公开题目的基本信息（不含答案和解析）
+    * 统计数据
+- 未授权用户：
+    * 无权限查看非公开题目
+
+### 参数说明
+- `question_id` (int): 题目ID
+### 返回结构
+```
+JSON: {
+        'id': int,
+        'title': str,
+        'content': str,
+        'type': str,          # 题目类型：'choice' 或 'fill'
+        'difficulty': int,     # 难度等级：1-5
+        'is_public': bool,     # 是否公开
+        'user_id': int,        # 创建者ID
+        'user_name': str,      # 创建者用户名
+        'accept_num': int,     # 通过次数
+        'submit_num': int,     # 提交次数
+        'accuracy_rate': float,# 正确率
+        'tags': list[str],     # 题目标签列表
+        'options': list[str],  # 仅选择题：选项列表
+        'options_count': int,  # 仅选择题：选项数量
+        'answer': str,         # 仅管理员/作者可见
+        'explanation': str     # 仅管理员/作者可见
+    }
+
+Raises:
+    404: 题目不存在
+    403: 无权限查看此题目
+    500: 数据库操作失败
+```
+
+---
+
+## `/api/questions/create` (POST)
+*文件位置*: `online_judge/api/questions/update.py`
+
+**描述**: 创建选择题或填空题
+
+### 参数说明
+- `title` (str): 题目标题
+- `content` (str): 题目内容
+- `question_type` (str): 题目类型('choice'或'fill')
+- `answer` (str): 答案(选择题形如"AB"，填空题直接存答案)
+- `options` (list[str], 仅选择题): 选项列表
+- `options_count` (int, 仅选择题): 选项个数
+- `explanation` (str, optional): 题目解析
+- `difficulty` (int, optional): 难度(1-5,默认1)
+- `is_public` (bool, optional): 是否公开(默认false)
+- `tags` (list[str], optional): 标签列表
+### 返回结构
+```
+dict: 创建的题目信息
+```
+
+---
+
+## `/api/questions/update/<int:question_id>` (POST)
+*文件位置*: `online_judge/api/questions/update.py`
+
+**描述**: 更新选择题或填空题
+
+### 参数说明
+- `question_id` (int): 题目ID
+- `title` (str, optional): 新标题
+- `content` (str, optional): 新内容
+- `options` (list[str], optional): 新选项列表(仅选择题)
+- `answer` (str, optional): 新答案
+- `explanation` (str, optional): 新解析
+- `difficulty` (int, optional): 新难度(1-5)
+- `is_public` (bool, optional): 是否公开
+- `tags` (list[str], optional): 新标签列表
+### 返回结构
+```
+dict: 更新后的题目信息
+```
+
+---
+
+## `/api/questions/delete/<int:question_id>` (POST)
+*文件位置*: `online_judge/api/questions/update.py`
+
+**描述**: 删除选择题或填空题
+
+### 参数说明
+- `question_id` (int): 题目ID
+### 返回结构
+```
+dict: 操作结果
+```
+
+---
+
+## `/api/submission/filter` (POST)
+*文件位置*: `online_judge/api/submission/show.py`
+
+**描述**: 根据多条件筛选提交记录
+
+支持通过组合多个查询参数过滤提交记录，返回分页后的结果集
+
+### 参数说明
+- `user_id` (int, optional): 筛选指定用户的提交记录
+- `problem_id` (int, optional): 筛选指定题目的提交记录
+- `contest_id` (int, optional): 筛选指定比赛的提交记录
+- `language` (str, optional): 按编程语言过滤（枚举值：python/cpp）
+### 返回结构
+```
+JSON: 包含分页信息的提交记录列表
+    {
+        "submissions": [
+            {
+                "id": 123,
+                "problem_id": 456,
+                "user_id": 789,
+                "language": "python",
+                "submit_time": "2023-08-20T14:30:00",
+                "status": "Accepted",
+                "time_used": 100,    // 单位：毫秒
+                "memory_used": 2048  // 单位：KB
+            },
+            ...
+        ],
+        "pagination": {
+            "total": 100,
+            "current_page": 1,
+            "per_page": 20
+        }
+    }
+
+Raises:
+    400 Bad Request: 参数格式错误
+    500 Internal Server Error: 数据库查询异常
+```
+
+---
+
+## `/api/submission/get/<int:submission_id>` (GET)
+*文件位置*: `online_judge/api/submission/show.py`
+
+**描述**: 获取指定提交记录的详细信息
+
+### 参数说明
+- `submission_id` (int): 路径参数，提交记录的唯一标识符
+### 返回结构
+```
+JSON: 提交记录的完整信息
+    {
+        "id": 123,
+        "code": "print('Hello World')",
+        "language": "python",
+        "user_id": 456,
+        "problem_id": 789,
+        "contest_id": 101,
+        "submit_time": "2023-08-20T14:30:00",
+        "status": "Accepted",
+        "time_used": 100,      // 单位：毫秒
+        "memory_used": 2048,   // 单位：KB
+        "compile_error_info": ""  // 编译错误信息（如有）
+    }
+
+Raises:
+    404 Not Found: 指定ID的提交记录不存在
+
+Notes:
+    1. 代码内容仅对提交者/管理员可见（待实现）
+    2. 编译错误信息仅在状态为CompileError时返回
 ```
 
 ---

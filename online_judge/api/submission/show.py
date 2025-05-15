@@ -43,9 +43,6 @@ def submission_filter():
         400 Bad Request: 参数格式错误
         500 Internal Server Error: 数据库查询异常
 
-    Notes:
-        1. 当前版本未实现鉴权，后续需添加JWT验证
-        2. 分页参数将在后续版本实现
     """
     data = request.get_json()
 

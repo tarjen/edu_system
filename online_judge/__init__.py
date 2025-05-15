@@ -1,5 +1,6 @@
 import os
 import sys
+import platform
 
 from flask import Flask,request,jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -15,8 +16,17 @@ def get_data():
 
 
 CORS(app) 
+
+# 根据操作系统确定 SQLite URI 前缀
+if platform.system() == 'Windows':
+    sqlite_prefix = 'sqlite:///'
+else:
+    sqlite_prefix = 'sqlite:////'
+
+# 配置数据库URI
+db_path = os.path.join(os.path.dirname(app.root_path), os.getenv('DATABASE_FILE', 'data.db'))
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////' + os.path.join(os.path.dirname(app.root_path), os.getenv('DATABASE_FILE', 'data.db'))
+app.config['SQLALCHEMY_DATABASE_URI'] = sqlite_prefix + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 
