@@ -12,8 +12,8 @@ REM 运行所有测试文件
 @REM %PYTHON% -m pytest online_judge/test/test_incontest.py
 @REM %PYTHON% -m pytest online_judge/test/test_submit.py > output.txt 2>&1
 @REM %PYTHON% -m pytest online_judge/test/test_questions_API.py  
-%PYTHON% -m pytest online_judge/test/test_homework_API.py  
-
+@REM %PYTHON% -m pytest online_judge/test/test_homework_API.py  
+%PYTHON% -m pytest online_judge/test/test_gen_homework.py
 
 REM 或者直接运行所有测试
 REM %PYTHON% -m pytest online_judge/test/

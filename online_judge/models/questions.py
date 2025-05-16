@@ -119,6 +119,34 @@ class Question(db.Model):
         except Exception as e:
             return False, "更新失败"
 
+    def to_dict(self):
+        """将题目转换为字典格式"""
+        result = {
+            'id': self.id,
+            'title': self.title,
+            'content': self.content,
+            'type': self.question_type,
+            'difficulty': self.difficulty,
+            'user_id': self.user_id,
+            'user_name': self.user_name,
+            'accept_num': self.accept_num,
+            'submit_num': self.submit_num,
+            'is_public': self.is_public,
+            'used_times': self.used_times,
+            'answer': self.answer,
+            'explanation': self.explanation,
+            'tags': [tag.name for tag in self.tags]
+        }
+        
+        # 选择题额外信息
+        if self.question_type == QuestionType.CHOICE.value:
+            result.update({
+                'options': self.get_options(),
+                'options_count': self.options_count
+            })
+            
+        return result
+
 # 题目-标签关联表
 question_tag = db.Table('question_tag',
     db.Column('question_id', db.Integer, db.ForeignKey('question.id'), primary_key=True),
