@@ -221,3 +221,86 @@ def create_problem():
         db.session.rollback()
         logging.error(f"create problem failed: {str(e)}")
         return jsonify({"error": f"create problem Failed {str(e)}"}), 404
+
+
+@app.route('/api/problem/delete/<int:problem_id>', methods=['POST'])
+@jwt_required()
+def delete_problem(problem_id):
+    """
+    删除指定题目
+    
+    验证用户权限并确保题目不在任何比赛中后，删除题目及其相关数据。
+    删除操作会同时删除：
+    1. 数据库中的题目记录
+    2. 题目相关的文件系统数据（包括测试数据、配置文件等）
+    
+    权限要求：
+    - 用户必须是题目的所有者，或
+    - 用户权限等级 >= 2（管理员）
+    
+    删除条件：
+    - 题目必须存在
+    - 题目不能在任何比赛中使用
+    - 用户必须有足够的权限
+    
+    Args:
+        problem_id (int): 要删除的题目ID（URL参数）
+        
+    Returns:
+        JSON Response:
+            成功：
+                - HTTP 200
+                - {"OK": "题目 {problem_id} 已成功删除"}
+            失败：
+                - HTTP 404
+                - {"error": error_message}，其中error_message可能是：
+                    - "题目不存在"：请求的题目ID不存在
+                    - "没有权限删除此题目"：用户不是题目所有者且不是管理员
+                    - "题目正在被比赛使用中，无法删除"：题目正在某个比赛中使用
+                    - "删除题目失败: {具体错误}"：其他删除过程中的错误
+    
+    示例：
+        POST /api/problem/delete/123
+        Headers: 
+            token: <jwt_token>
+        
+        成功响应：
+            {"OK": "题目 123 已成功删除"}
+        
+        失败响应：
+            {"error": "题目正在被比赛使用中，无法删除"}
+    """
+    user = User(get_jwt())
+    
+    # 检查题目是否存在
+    problem = Problem.query.filter_by(id=problem_id).first()
+    if problem is None:
+        return jsonify({"error": "题目不存在"}), 404
+        
+    # 验证用户权限（必须是题目所有者）
+    if problem.user_id != user.id and user.power < 2:
+        return jsonify({"error": "没有权限删除此题目"}), 404
+    
+    # 检查题目是否在任何比赛中
+    contests = Contest.query.all()
+    for contest in contests:
+        if problem_id in contest.get_problems():
+            return jsonify({"error": "题目正在被比赛使用中，无法删除"}), 404
+    
+    try:
+        # 删除题目文件夹
+        problem_path = os.path.join(os.getenv('PROBLEM_PACKAGE_PATH'), str(problem_id))
+        if os.path.exists(problem_path):
+            import shutil
+            shutil.rmtree(problem_path)
+        
+        # 删除数据库记录
+        db.session.delete(problem)
+        db.session.commit()
+        
+        return jsonify({"OK": f"题目 {problem_id} 已成功删除"}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"删除题目失败: {str(e)}")
+        return jsonify({"error": f"删除题目失败: {str(e)}"}), 404

@@ -384,6 +384,70 @@ class ProblemAPITestCase(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 404)
 
+    def test_delete_problem_success(self):
+        """测试成功删除题目"""
+        # 创建一个新题目用于删除测试
+        problem = Problem(
+            title="To Delete",
+            statement="Will be deleted",
+            user_id=1,
+            user_name="admin",
+            difficulty=1,
+            is_public=True,
+            time_limit=2,
+            memory_limit=256
+        )
+        db.session.add(problem)
+        db.session.commit()
+        
+        headers = self.get_headers('admin')
+        response = self.client.post(f'/api/problem/delete/{problem.id}',
+                                  headers=headers)
+        self.assertEqual(response.status_code, 200)
+        
+        # 验证题目已被删除
+        deleted_problem = Problem.query.filter_by(id=problem.id).first()
+        self.assertIsNone(deleted_problem)
+
+    def test_delete_nonexistent_problem(self):
+        """测试删除不存在的题目"""
+        headers = self.get_headers('admin')
+        response = self.client.post('/api/problem/delete/999',
+                                  headers=headers)
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("题目不存在", response.json["error"])
+
+    def test_delete_problem_without_permission(self):
+        """测试无权限删除题目"""
+        # 创建一个由admin创建的题目
+        problem = Problem(
+            title="Admin's Problem",
+            statement="Only admin can delete",
+            user_id=1,  # admin的ID
+            user_name="admin",
+            difficulty=1,
+            is_public=True,
+            time_limit=2,
+            memory_limit=256
+        )
+        db.session.add(problem)
+        db.session.commit()
+        
+        # 使用普通用户尝试删除
+        headers = self.get_headers('user')
+        response = self.client.post(f'/api/problem/delete/{problem.id}',
+                                  headers=headers)
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("没有权限删除此题目", response.json["error"])
+
+    def test_delete_problem_in_contest(self):
+        """测试删除正在比赛中使用的题目"""
+        # Problem 1 已经在setUp中被添加到Contest 1中
+        headers = self.get_headers('admin')
+        response = self.client.post('/api/problem/delete/1',
+                                  headers=headers)
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("题目正在被比赛使用中", response.json["error"])
 
 if __name__ == '__main__':
     unittest.main()
